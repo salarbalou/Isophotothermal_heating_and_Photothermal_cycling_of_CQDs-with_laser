@@ -1,0 +1,88 @@
+// This Code is made to heat a solution of Carbon Qunatum Dots (10-30 ul) using a blue laser (480nm) opertating at 7.5V. 
+// The output of the laser is controlled using a P30N06LE MOSFET transistot connected to the PWM pin of arduino
+
+#include "max6675.h"
+
+#define  trans_pin  3
+
+int soPin = 4;// SO = Serial Out
+int csPin = 5;// CS = chip select CS pin
+int sckPin = 6;// SCK = Serial Clock pin 
+MAX6675 k_type_module(sckPin, csPin, soPin);// create instance object of MAX6675                             
+double temperature = 0;
+float t = 0;
+float A = 1.0206;
+float  B = 8.4271;
+
+int i;
+
+unsigned long denat_start_time = 0;
+unsigned long exten_start_time = 0;
+
+void setup() {
+pinMode(trans_pin, OUTPUT);
+Serial.begin(9600);
+}
+
+void loop() {
+
+ // Make sure the temperature has reached 95 first:
+ while(temperature <= 95){
+    analogWrite(trans_pin, 120); // This will bring the temperature to 95 real quick(125 analogwrite output -> 120 temperature)
+    update_temperature();
+    display_results();
+ }
+ 
+  denat_start_time = millis();
+  while(((millis() - denat_start_time)/1000) < 20){ // maintain temperature at 95 for 20 seconds//
+    if (temperature <= 95){
+      analogWrite(trans_pin, 90);
+          update_temperature();
+          display_results();
+    }
+    if (temperature >= 97){
+      analogWrite(trans_pin, 0);
+          update_temperature();
+          display_results();
+  }
+            update_temperature();
+            display_results(); 
+  }
+  
+  // Now turn off the laser to reach the temperature 60 first. and make sure temperature has reached 60. 
+ while(temperature >= 60){
+    analogWrite(trans_pin, 0); // This will bring the temperature to 60 real quick(0 analogwrite output -> laser off)
+    update_temperature();
+    display_results();
+ }
+ 
+ // Now begin the second step:
+  exten_start_time = millis();
+  while(((millis() - exten_start_time)/1000) < 40){ // maintain temperature at 60 for 40 seconds//
+    if (temperature <= 60){
+      analogWrite(trans_pin, 55);
+          update_temperature();
+          display_results();
+    }
+    if (temperature >= 62){
+      analogWrite(trans_pin, 0);
+          update_temperature();
+          display_results();
+  }
+            update_temperature();
+            display_results(); 
+  }
+
+}
+
+void update_temperature(){
+  t = k_type_module.readCelsius();
+  temperature = A*t - B;  
+}
+
+void display_results(){
+          Serial.print(millis()/1000); 
+          Serial.print(" , ");
+          Serial.println(temperature); 
+          delay(650);
+}
